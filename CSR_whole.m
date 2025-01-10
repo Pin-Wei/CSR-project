@@ -3,7 +3,7 @@ clear; clc; close all
 %% Define variables
 
 data_classes = ["Linguistic", "SRT_BinShan", "SRT_Joanne"];
-data_class = data_classes(3);
+data_class = data_classes(1);
 
 do_norm = 0; 
 norm_range = [-1, 1];
@@ -25,7 +25,7 @@ if data_class == "Linguistic" % -------------------------------------------
     data_vers = ["raw", "zscored"];
     data_ver = data_vers(2);
 
-    if do_z == 1
+    if data_ver == "zscored"
         fn_regex = "zscored_sub_*.xlsx";
         sid_regex = "zscored_sub_%d.xlsx"; 
         out_tags = " (z-scored)" + out_tags; 
@@ -116,7 +116,7 @@ nP = (nF*3 + nF^2 + 2) / 2; % number of parameters
 
 % Preallocating memory:
 sid_list = zeros(nS, 1); 
-results_list = zeros(nS, nP + 2);  
+results_list = zeros(nS, nP + 6);  
 residuals_list = NaN(nT_max, nS);
 
 %% Loop through each file
@@ -164,19 +164,24 @@ for i = 1:length(data_paths)
         end
     end
 
-    % Perform linear regression
-    [Coefs, ~, residuals, ~, stats] = regress(Y, X);
-    rsq = stats(1); % R squared
+%     % Perform linear regression
+%     [Coefs, ~, residuals, ~, stats] = regress(Y, X);
+%     rsq = stats(1); % R squared
 
-%     % Alternative approach: 
-%     Coefs = pinv(X' * X) * X' * Y; 
-%     Y_pred = X * Coefs; 
-%     residuals = Y - Y_pred; 
-%     rsq = 1 - (sum(residuals .^ 2) / sum((Y - mean(Y)) .^ 2)); 
-%     nrmse = sqrt(mean((residuals ./ Y_pred) .^ 2)); 
+    % Alternative approach: 
+    Coefs = pinv(X' * X) * X' * Y; 
+    Y_pred = X * Coefs; 
+    residuals = Y - Y_pred; 
+    rss = sum(residuals .^ 2);     % Residual Sum of Squares
+    tss = sum((Y - mean(Y)) .^ 2); % Total Sum of Squares    
+    Rsq = 1 - (rss / tss);                              % R squared
+    Rsq_adj = 1 - (rss / (nT - nP)) / (tss / (nT - 1)); % Adjusted R squared
+    AIC = nT * log(rss / nT) + 2 * nP;                  % Akaike Information Criterion 
+    BIC = nT * log(rss / nT) + nP * log(nT);            % Bayesian Information Criterion
+    NRMSE = sqrt(mean((residuals ./ Y_pred) .^ 2));     % Normalized Root-Mean-Square Error
 
-    % store the parameters and R-square of each subject
-    param_info = [sid, Coefs', rsq];
+    % store the parameters and R-square of each subject 
+    param_info = [sid, Coefs', Rsq, Rsq_adj, AIC, BIC, NRMSE];
     results_list(i, :) = param_info;
 
     % Fill the residuals into column i (replace NaN)
@@ -193,7 +198,7 @@ var_names = [
     strcat('F', string(1:nF), '^2'), ...
     strcat('F', string(repelem(1:nF-1, nF-1:-1:1)), ... 
            'F', string(cell2mat(arrayfun(@(x) (x:nF), 2:nF, 'UniformOutput', false)))), ... 
-    'R_squared'];
+    'R_squared', 'Adjusted_R2', 'AIC', 'BIC', 'NRMSE'];
 
 results_list_table = array2table( ...
     results_list, 'VariableNames', var_names);
