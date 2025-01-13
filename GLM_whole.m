@@ -94,8 +94,8 @@ end
 
 if ~ exist(out_folder, 'dir'), mkdir(out_folder), end
 
-out_file_1 = join(['CSR_regression_results', out_tags, ".csv"], ''); 
-out_file_2 = join(['CSR_residuals', out_tags, ".csv"], ''); 
+out_file_1 = join(['GLM_regression_results', out_tags, ".csv"], ''); 
+out_file_2 = join(['GLM_residuals', out_tags, ".csv"], ''); 
 
 %% Load data and preallocating memory
 
@@ -112,7 +112,7 @@ end
 
 nS = length(data_paths);    % number of subjects
 nF = size(data, 2) - 1;     % number of factors
-nP = (nF*3 + nF^2 + 2) / 2; % number of parameters
+nP = nF + 1;                % number of parameters
 
 model_measures = [
     "R_squared", "Adjusted_R2", "LogLik", "AIC", "AICc", "BIC", "NRMSE"];
@@ -120,7 +120,7 @@ nM = length(model_measures);
 
 % Preallocating memory:
 sid_list = zeros(nS, 1); 
-results_list = zeros(nS, 1 + nP + nM);  
+results_list = zeros(nS, 1 + nP + nM);   
 residuals_list = NaN(nT_max, nS);
 
 %% Loop through each file
@@ -157,16 +157,7 @@ for i = 1:length(data_paths)
     X = [  
         ones(nT, 1),  ... % constant term
         F_vals,       ... % linear terms
-        F_vals .^ 2,  ... % quadratic terms
-        zeros(nT, nI) ... % pre-allocate memory for interaction terms
     ];  
-    col = 1 + nF + nF; 
-    for j = 1:nF-1
-        for k = j+1:nF
-            col = col + 1;
-            X(:, col) = F_vals(:, j) .* F_vals(:, k); 
-        end
-    end
 
     % Solve linear equation: 
     Coefs = pinv(X' * X) * X' * Y; 
@@ -196,7 +187,7 @@ for i = 1:length(data_paths)
 %     param_info = [sid, Coefs', Rsq, Rsq_adj, log_lik, AIC, AICc, BIC, NRMSE];
     results_list(i, :) = param_info;
 
-    % Fill the residuals into column i (replace NaN):
+    % Fill the residuals into column i (replace NaN)
     residuals_list(1:length(residuals), i) = residuals; 
 end
 
@@ -205,12 +196,7 @@ fprintf('Average R-squared = %.3f', mean(results_list(:, end)));
 %% Generate variable names and save to file
 
 var_names = [
-    'SID', 'X0', ...
-    F_names, ... % used to be strcat('F', string(1:nF))
-    strcat('F', string(1:nF), '^2'), ...
-    strcat('F', string(repelem(1:nF-1, nF-1:-1:1)), ... 
-           'F', string(cell2mat(arrayfun(@(x) (x:nF), 2:nF, 'UniformOutput', false)))), ... 
-    model_measures];
+    'SID', 'X0', F_names, model_measures];
 results_list_table = array2table( ...
     results_list, 'VariableNames', var_names);
 writetable(results_list_table, fullfile(out_folder, out_file_1));
