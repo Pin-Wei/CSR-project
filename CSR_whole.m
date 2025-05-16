@@ -5,8 +5,8 @@ clear; clc; close all
 data_classes = ["Linguistic", "SRT_BinShan", "SRT_Joanne"];
 data_class = data_classes(1);
 
-do_norm = 0; 
 norm_range = [-1, 1];
+do_norm = 1; 
 
 if do_norm == 1, out_tags = " (normed)"; else, out_tags = ""; end
 
@@ -23,15 +23,30 @@ if data_class == "Linguistic" % -------------------------------------------
     data_folder = fullfile("Data_Linguistic", author, task); 
 
     data_vers = ["raw", "zscored"];
-    data_ver = data_vers(2);
+    data_ver = data_vers(1);
+
+    data_levels = ["group", "individual"];
+    data_level = data_levels(1);
 
     if data_ver == "zscored"
-        fn_regex = "zscored_sub_*.xlsx";
-        sid_regex = "zscored_sub_%d.xlsx"; 
+        if data_level == "group"
+            fn_regex = "all_subjs_zvars_*.xlsx"; 
+            sid_regex = "all_subjs_zvars_%d (*).xlsx"; 
+            out_tags = out_tags + " (group-level)";
+        else % data_level == "individual"
+            fn_regex = "zscored_sub_*.xlsx";
+            sid_regex = "zscored_sub_%d.xlsx"; 
+        end
         out_tags = " (z-scored)" + out_tags; 
     else
-        fn_regex = "sub_*.xlsx"; 
-        sid_regex = "sub_%d.xlsx"; 
+        if data_level == "group"
+            fn_regex = "all_subjs_raw_*.xlsx"; 
+            sid_regex = "all_subjs_raw_%d (*).xlsx"; 
+            out_tags = out_tags + " (group-level)";
+        else % data_level == "individual"
+            fn_regex = "sub_*.xlsx"; 
+            sid_regex = "sub_%d.xlsx"; 
+        end
     end
 
     out_folder = fullfile("Output_Linguistic", author, task);    
