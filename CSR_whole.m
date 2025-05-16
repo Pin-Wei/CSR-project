@@ -24,29 +24,42 @@ if data_class == "Linguistic" % -------------------------------------------
 
     data_vers = ["raw", "zscored"];
     data_ver = data_vers(1);
+    if data_ver == "zscored", out_tags = " (z-scored)" + out_tags; end
 
-    data_levels = ["group", "individual"];
-    data_level = data_levels(1);
+    data_levels = ["individual", "group", "single-subj"];
+    data_level = data_levels(3);
 
-    if data_ver == "zscored"
-        if data_level == "group"
-            fn_regex = "all_subjs_zvars_*.xlsx"; 
-            sid_regex = "all_subjs_zvars_%d (*).xlsx"; 
-            out_tags = out_tags + " (group-level)";
-        else % data_level == "individual"
-            fn_regex = "zscored_sub_*.xlsx";
-            sid_regex = "zscored_sub_%d.xlsx"; 
+    if data_level == "single-subj"
+        data_folder = fullfile(data_folder, "derivatives");
+        sidx = 5102; % input("Which participant? ", "s");
+        seed = 318; % input("What was the seed? ", "s");
+        fn_regex = "sub-" + sidx + "_*.xlsx";
+        sid_regex = "sub-" + sidx + "_seed=" + seed + "_%d.xlsx";
+        
+        if data_ver == "zscored"
+            fn_regex = "zscored_" + fn_regex;
+            sid_regex = "zscored_" + sid_regex;
         end
-        out_tags = " (z-scored)" + out_tags; 
-    else
-        if data_level == "group"
-            fn_regex = "all_subjs_raw_*.xlsx"; 
-            sid_regex = "all_subjs_raw_%d (*).xlsx"; 
-            out_tags = out_tags + " (group-level)";
-        else % data_level == "individual"
-            fn_regex = "sub_*.xlsx"; 
-            sid_regex = "sub_%d.xlsx"; 
+
+        out_tags = out_tags + " (sub-" + sidx + ")";
+
+    elseif data_level == "individual"
+        fn_regex = "sub_*.xlsx";
+        sid_regex = "sub_%d.xlsx";
+
+        if data_ver == "zscored"
+            fn_regex = "zscored_" + fn_regex;
+            sid_regex = "zscored_" + sid_regex;
         end
+
+    else % data_level == "group"
+        if data_ver == "zscored"
+            [fn_regex, sid_regex] = assignList(["all_subjs_raw_*.xlsx", "all_subjs_raw_%d (*).xlsx"]);
+        else
+            [fn_regex, sid_regex] = assignList(["all_subjs_zvars_*.xlsx", "all_subjs_zvars_%d (*).xlsx"]);
+        end
+
+        out_tags = out_tags + " (group-level)";
     end
 
     out_folder = fullfile("Output_Linguistic", author, task);    
@@ -114,7 +127,7 @@ out_file_2 = join(['CSR_residuals', out_tags, ".csv"], '');
 
 %% Load data and preallocating memory
 
-cd 'C:\Users\PinWei\my_CSR'; 
+cd 'C:\Users\PinWei\my_CSR_project'; 
 
 data_paths = dir(fullfile(data_folder, fn_regex)); 
 
