@@ -32,7 +32,7 @@ if data_class == "Linguistic" % -------------------------------------------
     if data_level == "single-subj"
         data_folder = fullfile(data_folder, "derivatives");
         sidx = 5102; % input("Which participant? ", "s");
-        seed = 318; % input("What was the seed? ", "s");
+        seed = 6180; % input("What was the seed? ", "s");
         fn_regex = "sub-" + sidx + "_*.xlsx";
         sid_regex = "sub-" + sidx + "_seed=" + seed + "_%d.xlsx";
         
@@ -41,7 +41,7 @@ if data_class == "Linguistic" % -------------------------------------------
             sid_regex = "zscored_" + sid_regex;
         end
 
-        out_tags = out_tags + " (sub-" + sidx + ")";
+        out_tags = out_tags + " (sub-" + sidx + "_" + seed + ")";
 
     elseif data_level == "individual"
         fn_regex = "sub_*.xlsx";
