@@ -9,7 +9,7 @@ import pandas as pd
 
 ## Set parameters --------------------------------------------------------------
 
-NUM_SAMPLES = 100
+NUM_SAMPLES = 10000
 SAMPLE_SIZE = 45
 RANDOM_SEED = random.randint(0, 10000)
 
@@ -55,7 +55,7 @@ while count < NUM_SAMPLES:
         sampled_indices.add(candidate)
         sub_DF = DF.loc[candidate, :]
         sub_DF.to_excel(
-            os.path.join(out_folder, f"{zscored}sub-{sid}_seed={RANDOM_SEED}_{count:03}.xlsx"), 
+            os.path.join(out_folder, f"{zscored}sub-{sid}_seed={RANDOM_SEED}_{count:05}.xlsx"), 
             index=False
         )
         save_indices[count] = list(sub_DF.index)
