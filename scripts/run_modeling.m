@@ -7,7 +7,7 @@ data_paths = dir(fullfile(cfg.data_folder, cfg.fn_regex));
 if ~ exist(cfg.out_folder, 'dir'), mkdir(cfg.out_folder), end
 
 model_types = ["CSR", "GLM"];
-model_type = model_types(2);
+model_type = model_types(1);
 
 regression_results_out = fullfile(cfg.out_folder, join([model_type, '_', 'regression_results', cfg.out_tags, ".csv"], '')); 
 residuals_table_out = fullfile(cfg.out_folder, join([model_type, '_', 'residuals', cfg.out_tags, ".csv"], ''));
@@ -33,12 +33,12 @@ switch model_type
         nP = nF + 1;
 end
 
-model_measures = ["R_squared", "Adjusted_R2", "LogLik", "AIC", "AICc", "BIC", "NRMSE"];
+model_measures = ["R_squared", "Adjusted_R2", "LogLik", "AIC", "AICc", "BIC"];
 nM = length(model_measures);
 
 % Preallocating memory:
 sid_list = zeros(nS, 1); 
-results_list = zeros(nS, 1 + nP + nM);  
+results_list = zeros(nS, 1 + nP + 1 + nM);  
 residuals_list = NaN(nT_max, nS);
 
 %% Loop through each file
@@ -107,29 +107,22 @@ for i = 1:length(data_paths)
     RSS = sum(residuals .^ 2);     % Residual Sum of Squares
     TSS = sum((Y - mean(Y)) .^ 2); % Total Sum of Squares
     Rsq = 1 - (RSS / TSS); 
-    Rsq_adj = 1 - (RSS / (nT - nP - 1)) / (TSS / (nT - 1));  
+    Rsq_adj = 1 - (RSS / (nT - (nP - 1) - 1)) / (TSS / (nT - 1));  
         
     % Caculate various Information Criterion: 
     re_var = RSS / nT; % Residual variance
     log_lik = -0.5 * nT * (log(2 * pi * re_var) + 1); % Log Likelihood
-    [~, ~, IC] = aicbic(log_lik, nP, nT); 
-%     AIC = -2 * log_lik + 2 * nP;       % Akaike IC
-%     AICc = AIC + (2 * nP ^ 2 + 2 * nP) / (nT - nP - 1); % Corrected AIC
-%     BIC = -2 * log_lik + log(nT) * nP; % Bayesian IC
-    
-    % Caculate Normalized Root-Mean-Square Error:
-    NRMSE = sqrt(mean((residuals ./ Y_pred) .^ 2)); 
+    [~, ~, IC] = aicbic(log_lik, nP + 1, nT); 
 
     % Store the parameters and other results of each subject :
-    param_info = [sid, Coefs', Rsq, Rsq_adj, log_lik, IC.aic, IC.aicc, IC.bic, NRMSE];
-%     param_info = [sid, Coefs', Rsq, Rsq_adj, log_lik, AIC, AICc, BIC, NRMSE];
+    param_info = [sid, Coefs', nT, Rsq, Rsq_adj, log_lik, IC.aic, IC.aicc, IC.bic];
     results_list(i, :) = param_info;
 
     % Fill the residuals into column i (replace NaN):
     residuals_list(1:length(residuals), i) = residuals; 
 end
 
-idx_Rsq = 1 + nP + 1;
+idx_Rsq = 2 + nP + 1;
 fprintf('Average R-squared = %.3f\n', mean(results_list(:, idx_Rsq)));
 
 %% Generate variable names and save to file
@@ -142,11 +135,11 @@ switch model_type
             strcat('F', string(1:nF), '^2'), ...
             strcat('F', string(repelem(1:nF-1, nF-1:-1:1)), ... 
                    'F', string(cell2mat(arrayfun(@(x) (x:nF), 2:nF, 'UniformOutput', false)))), ... 
-            model_measures ...
+            'nT', model_measures ...
         ];
 
     case "GLM"
-        var_names = ['SID', 'X0', F_names, model_measures];
+        var_names = ['SID', 'X0', F_names, 'nT', model_measures];
 end
 
 results_list_table = array2table(results_list, 'VariableNames', var_names);
