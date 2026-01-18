@@ -87,7 +87,8 @@ run_mdl <- function(mdl.type, dat, dv, f.cols) {
       formula <- as.formula(paste(
         dv, "~", paste(f.cols, collapse = " + "), 
         "+ (1 | Char)", 
-        "+ (1 +", paste(f.cols, collapse = " + "), "| subject_id)"
+        # "+ (1 +", paste(f.cols, collapse = " + "), "|| subject_id)"
+        "+ (1 | subject_id)"
       ))
       mdl <- lmerTest::lmer(
         formula = formula, 
@@ -102,29 +103,51 @@ run_mdl <- function(mdl.type, dat, dv, f.cols) {
 }
 
 gen_res_df <- function(mdl) {
-  coefs <- mdl$coefficients
-  rsq <- MuMIn::r.squaredGLMM(mdl)
-  res_df <- cbind(
+  is_lm <- inherits(mdl, "lm")
+  
+  if ( is_lm ) {
+    coefs <- stats::coef(mdl)
+    summ <- summary(mdl)
+    r.df <- data.frame(
+      R2 = summ$r.squared, 
+      R2_adj = summ$adj.r.squared
+    )
+  } else {
+    coefs <- lme4::fixef(mdl)
+    rsq <- MuMIn::r.squaredGLMM(mdl)
+    r.df <- data.frame(
+      R2m = rsq[1],
+      R2c = rsq[2]
+    )
+  }
+
+  res.df <- cbind(
     t(as.data.frame(coefs)), 
     data.frame(
-      # nP = length(coef(mdl)), 
-      nT = nobs(mdl),
+      nT = nobs(mdl), 
       LogLik = stats::logLik(mdl), 
-      R2m = rsq[1],
-      R2c = rsq[2],
       AIC = stats::AIC(mdl), 
       AICc = MuMIn::AICc(mdl), 
       BIC = stats::BIC(mdl)
-    )
+    ), 
+    r.df
   )
-  return(res_df)
+  return(res.df)
 }
 
 save_res_wb <- function(mdl, fp) {
+  is_lm <- inherits(mdl, "lm")
+  
+  if ( is_lm ) {
+    summ <- stargazer(mdl, align = TRUE, type = "text")
+  } else {
+    summ <- capture.output(summary(mdl))
+  }
+  
   wb <- openxlsx::createWorkbook()
   openxlsx::addWorksheet(wb, "Model Summary")
   openxlsx::writeData(wb, sheet = "Model Summary", 
-                      x = stargazer(mdl, align = TRUE, type = "text"))
+                      x = summ)
   openxlsx::addWorksheet(wb, "VIF")
   openxlsx::writeData(wb, sheet = "VIF", 
                       x = capture.output(car::vif(mdl)))
@@ -136,7 +159,7 @@ save_res_wb <- function(mdl, fp) {
 cfg.list <- list(
   new("Config", rt_mode="individual", mdl_typ="CSR"), 
   new("Config", rt_mode="individual", mdl_typ="GLM"), 
-  new("Config", rt_mode="individual", mdl_typ="gLMEM"), 
+  new("Config", rt_mode="individual", mdl_typ="gLMEM"),
   new("Config", rt_mode="group", mdl_typ="CSR"), 
   new("Config", rt_mode="group", mdl_typ="GLM")
 )
@@ -181,10 +204,10 @@ for ( i in seq_along(cfg.list) ) {
     } else {
       
       mdl <- run_mdl(cfg@mdl_typ, dat, dv, f.cols)
-      res_df <- gen_res_df(mdl)
-      writexl::write_xlsx(res_df, output.path)
+      res.df <- gen_res_df(mdl)
+      writexl::write_xlsx(res.df, output.path)
       
-      output.path.2 <- sub("[R]", "[R#2]", output.path)
+      output.path.2 <- sub(".xlsx", " v2.xlsx", output.path)
       save_res_wb(mdl, output.path.2)
     }
   }
